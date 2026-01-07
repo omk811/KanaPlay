@@ -186,9 +186,15 @@
             box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
         }
 
-        .word-option:hover:not(.used) {
+        .word-option:hover:not(.used):not(.selected) {
             transform: scale(1.1);
             box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+        }
+
+        .word-option.selected {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+            border: 2px solid #fff;
+            transform: scale(1.05);
         }
 
         .word-option.used {
@@ -251,33 +257,6 @@
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-10px); }
             75% { transform: translateX(10px); }
-        }
-
-        .drop-zones {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-        }
-
-        .drop-zone {
-            min-width: 150px;
-            min-height: 60px;
-            border: 3px dashed #667eea;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2em;
-            background: white;
-            transition: all 0.3s;
-        }
-
-        .drop-zone.filled {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            border-style: solid;
         }
 
         .check-btn {
@@ -616,18 +595,24 @@
         let score = 0;
         let correct = 0;
         let selectedAnswer = null;
-        let answeredWords = []; // لحفظ الكلمات المرتبة
+        let answeredWords = [];
 
         function startLevel(level) {
             currentLevel = level;
             currentQuestion = 0;
+            score = 0;
+            correct = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('correct').textContent = '0';
+
             document.getElementById('level-select').style.display = 'none';
             document.getElementById('question-area').classList.add('active');
+            document.getElementById('completion-screen').classList.remove('show');
+
             loadQuestion();
         }
 
         function shuffleArray(array) {
-            // خوارزمية Fisher-Yates للخلط العشوائي
             const shuffled = [...array];
             for (let i = shuffled.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -650,24 +635,20 @@
             const optionsDiv = document.getElementById('options');
             optionsDiv.innerHTML = '';
             answeredWords = [];
-            
+            selectedAnswer = null;
+
             if (currentLevel === 3) {
-                // Level 3: بناء الجملة بالترتيب
-                
-                // إنشاء صندوق الإجابة
                 const answerBox = document.createElement('div');
                 answerBox.className = 'answer-box empty';
                 answerBox.id = 'answer-box';
                 optionsDiv.appendChild(answerBox);
 
-                // زر المسح
                 const clearBtn = document.createElement('button');
                 clearBtn.className = 'clear-btn';
                 clearBtn.textContent = '🔄 مسح الإجابة';
                 clearBtn.onclick = clearAnswer;
                 optionsDiv.appendChild(clearBtn);
 
-                // الكلمات المبعثرة
                 const wordsContainer = document.createElement('div');
                 wordsContainer.className = 'sentence-builder';
                 wordsContainer.id = 'words-container';
@@ -688,15 +669,17 @@
                 
                 optionsDiv.appendChild(wordsContainer);
             } else {
-                // Level 1 & 2: Multiple choice
                 q.options.forEach((option, index) => {
                     const btn = document.createElement('button');
                     btn.className = 'word-option';
                     btn.textContent = option;
+                    btn.dataset.index = index;
                     btn.onclick = function() {
-                        document.querySelectorAll('.word-option').forEach(b => b.classList.remove('selected'));
+                        document.querySelectorAll('.word-option').forEach(b => {
+                            b.classList.remove('selected');
+                        });
                         this.classList.add('selected');
-                        selectedAnswer = index;
+                        selectedAnswer = parseInt(this.dataset.index);
                     };
                     optionsDiv.appendChild(btn);
                 });
@@ -706,14 +689,11 @@
             document.getElementById('next-btn').style.display = 'none';
             document.getElementById('feedback').classList.remove('show');
             document.getElementById('explanation').classList.remove('show');
-            selectedAnswer = null;
         }
 
         function addWordToAnswer(word, button) {
             const answerBox = document.getElementById('answer-box');
             answerBox.classList.remove('empty');
-            
-            // إضافة الكلمة للصندوق
             const wordSpan = document.createElement('button');
             wordSpan.className = 'word-in-answer';
             wordSpan.textContent = word;
@@ -721,33 +701,22 @@
                 removeWordFromAnswer(word, this);
             };
             answerBox.appendChild(wordSpan);
-            
-            // حفظ الكلمة
             answeredWords.push(word);
-            
-            // تعطيل الزر الأصلي
             button.classList.add('used');
         }
 
         function removeWordFromAnswer(word, element) {
-            // حذف الكلمة من الصندوق
             element.remove();
-            
-            // حذف الكلمة من المصفوفة
             const index = answeredWords.indexOf(word);
             if (index > -1) {
                 answeredWords.splice(index, 1);
             }
-            
-            // إعادة تفعيل الزر الأصلي
             const buttons = document.querySelectorAll('.word-option');
             buttons.forEach(btn => {
                 if (btn.dataset.word === word) {
                     btn.classList.remove('used');
                 }
             });
-
-            // إذا أصبح الصندوق فارغًا
             const answerBox = document.getElementById('answer-box');
             if (answeredWords.length === 0) {
                 answerBox.classList.add('empty');
@@ -759,26 +728,27 @@
             const answerBox = document.getElementById('answer-box');
             answerBox.innerHTML = '';
             answerBox.classList.add('empty');
-            
-            // إعادة تفعيل جميع الأزرار
             document.querySelectorAll('.word-option').forEach(btn => {
                 btn.classList.remove('used');
             });
         }
 
         function checkAnswer() {
-            if (currentLevel === 3 && answeredWords.length === 0) {
-                alert('الرجاء ترتيب الكلمات في الصندوق!');
-                return;
-            }
-            
-            if (currentLevel !== 3 && selectedAnswer === null) {
-                alert('الرجاء اختيار إجابة!');
-                return;
-            }
-
             const levelData = gameData[`level${currentLevel}`];
             const q = levelData[currentQuestion];
+
+            if (currentLevel === 3) {
+                if (answeredWords.length === 0) {
+                    alert('الرجاء ترتيب الكلمات في الصندوق!');
+                    return;
+                }
+            } else {
+                if (selectedAnswer === null) {
+                    alert('الرجاء اختيار إجابة!');
+                    return;
+                }
+            }
+
             let isCorrect = false;
 
             if (currentLevel === 3) {
@@ -796,11 +766,10 @@
                 feedback.className = 'feedback success show';
                 score += 10;
                 correct++;
-                
                 if (currentLevel === 3) {
                     document.querySelectorAll('.word-in-answer').forEach(el => {
                         el.classList.add('correct');
-                        el.onclick = null; // تعطيل النقر
+                        el.onclick = null;
                     });
                 } else {
                     document.querySelectorAll('.word-option.selected').forEach(el => {
@@ -810,7 +779,6 @@
             } else {
                 feedback.textContent = '❌ إجابة خاطئة. حاول مرة أخرى!';
                 feedback.className = 'feedback error show';
-                
                 if (currentLevel === 3) {
                     document.querySelectorAll('.word-in-answer').forEach(el => {
                         el.classList.add('wrong');
@@ -822,15 +790,13 @@
                 }
             }
 
-            explanation.innerHTML = `<h3>💡 التوضيح:</h3><p>${q.explanation}</p>`;
-            explanation.classList.add('show');
-
             document.getElementById('score').textContent = score;
             document.getElementById('correct').textContent = correct;
+            explanation.innerHTML = `<h3>💡 التوضيح:</h3><p>${q.explanation}</p>`;
+            explanation.classList.add('show');
             document.getElementById('check-btn').style.display = 'none';
             document.getElementById('next-btn').style.display = 'block';
-            
-            // تعطيل جميع الأزرار
+
             document.querySelectorAll('.word-option').forEach(btn => {
                 btn.onclick = null;
                 btn.style.cursor = 'not-allowed';
@@ -850,9 +816,9 @@
             const completion = document.getElementById('completion-screen');
             completion.classList.add('show');
             
-            const percentage = (correct / gameData[`level${currentLevel}`].length * 100).toFixed(0);
+            const total = gameData[`level${currentLevel}`].length;
+            const percentage = (correct / total * 100).toFixed(0);
             let message = '';
-            
             if (percentage >= 90) {
                 message = '🌟 ممتاز جدًا! أنت متمكن من المهارة';
             } else if (percentage >= 70) {
@@ -865,21 +831,19 @@
                 <div>${message}</div>
                 <div style="margin-top: 20px;">
                     <div>النقاط الكلية: ${score}</div>
-                    <div>الإجابات الصحيحة: ${correct} من ${gameData[`level${currentLevel}`].length}</div>
+                    <div>الإجابات الصحيحة: ${correct} من ${total}</div>
                     <div>النسبة: ${percentage}%</div>
                 </div>
             `;
         }
 
         function restartGame() {
-            currentLevel = 1;
-            currentQuestion = 0;
-            score = 0;
-            correct = 0;
-            document.getElementById('score').textContent = '0';
-            document.getElementById('correct').textContent = '0';
+            // اختياري: إضافة تأكيد
+            // if (!confirm('هل أنت متأكد من بدء اللعبة من جديد؟')) return;
+
             document.getElementById('completion-screen').classList.remove('show');
             document.getElementById('level-select').style.display = 'grid';
+            // لا حاجة لتصفير هنا — سيتم تصفيره عند startLevel
         }
     </script>
 </body>
